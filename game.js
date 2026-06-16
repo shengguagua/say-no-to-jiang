@@ -275,6 +275,12 @@ canvas.addEventListener('mousemove', pointerMove);
 canvas.addEventListener('mouseup', pointerUp);
 document.addEventListener('gesturestart', e => e.preventDefault());
 
+// 专门用来拯救夸克和国内各种魔改浏览器的兜底
+canvas.addEventListener('click', (e) => {
+  // 如果 touchstart 没触发，用 click 强行把 pointerDown 顶进去
+  pointerDown(e); 
+});
+
 function hitBtn(p, cx, cy, w, h) {
   return p.x > cx - w/2 && p.x < cx + w/2 && p.y > cy - h/2 && p.y < cy + h/2;
 }
