@@ -1,0 +1,23 @@
+{
+  "name": "say-no-to-jiang",
+  "version": "1.0.0",
+  "description": "大黄历险记：小将别约啦！- A fun browser game",
+  "main": "game.js",
+  "scripts": {
+    "test": "echo \"No tests configured\" && exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shengguagua/say-no-to-jiang.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/shengguagua/say-no-to-jiang/issues"
+  },
+  "homepage": "https://github.com/shengguagua/say-no-to-jiang#readme",
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
+  }
+}
