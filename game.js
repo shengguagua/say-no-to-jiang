@@ -78,7 +78,6 @@ function forceMediaChannel() {
 }
 
 function ensureAudio() {
-  forceMediaChannel();
   if (!audioCtx) {
     try {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -88,15 +87,24 @@ function ensureAudio() {
       bgmGain = audioCtx.createGain();
       bgmGain.gain.value = 0.22;
       bgmGain.connect(masterGain);
-      // Silent buffer unlock
+      
+      // 播放一个无声的 buffer 瞬间激活
       const buf = audioCtx.createBuffer(1, 1, 22050);
       const src = audioCtx.createBufferSource();
-      src.buffer = buf; src.connect(audioCtx.destination); src.start(0);
+      src.buffer = buf; 
+      src.connect(audioCtx.destination); 
+      src.start(0);
+      
       startBGM();
-    } catch (e) { audioCtx = null; return; }
+    } catch (e) { 
+      audioCtx = null; 
+      return; 
+    }
   }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume().catch(() => {});
+  
+  // 【核心修改 2】如果被 iOS 挂起了，强行唤醒它
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().catch((err) => console.log("Audio resume failed:", err));
   }
 }
 
@@ -198,7 +206,22 @@ function getPos(e) {
 }
 function pointerDown(e) {
   e.preventDefault();
-  ensureAudio();
+  
+  // 【核心修改 1】只要用户一按屏幕，立刻无脑强制解锁 iOS 媒体通道
+  if (!silentEl) {
+    silentEl = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjQ1LjEwMAAAAAAAAAAAAAAA//tAwAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAACAAACgAD///////////////////////////////////////////////////////////////////8AAAA8TEFNRTMuMTAwAc0AAAAAAAAAABSAJAJAQgAAgAAAAoCJ9DQAAAAAAAAAAAAAAAD/+0DEAAPH3Yc1AAR8AAAANIAAAAQBTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//tCxFmDwAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/+0LE/4PAAAGkAAAAIAAANIAAAARVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//tCxP+DwAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=');
+    silentEl.loop = true;
+    silentEl.volume = 0.001;
+    silentEl.setAttribute('playsinline', '');
+  }
+  // 必须在点击事件的当前调用栈里直接 play()，才能破除 iOS 静音开关限制！
+  silentEl.play().then(() => {
+    // 激活 Web Audio 上下文
+    ensureAudio(); 
+  }).catch(() => {
+    ensureAudio();
+  });
+
   const p = getPos(e);
   if (state === STATE.MENU) { if (hitBtn(p, VW/2, 550, 200, 60)) reset(); return; }
   if (state === STATE.GAME_OVER) { if (hitBtn(p, VW/2, 545, 180, 50)) reset(); return; }
