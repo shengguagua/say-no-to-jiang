@@ -1052,3 +1052,32 @@ function loop(t) {
 resize();
 requestAnimationFrame(loop);
 })();
+
+
+// ====== 【专门对付 iOS/微信的终极全屏物理破冰】 ======
+function iosAudioUnlock() {
+  // 1. 如果音频环境还没创建，借用这个真·物理触摸事件立刻创建
+  if (!audioCtx) {
+    ensureAudio();
+  }
+  
+  // 2. 如果已经创建了但被 iOS 挂起了 (suspended)，强行 resume 唤醒
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().then(() => {
+      console.log("iOS Audio Context Unlocked via full screen touch!");
+    }).catch(err => console.log(err));
+  }
+
+  // 3. 顺便把那段静音 MP3 在真正的触控栈里播一下，强行切换 iOS 媒体通道
+  if (silentEl && silentEl.paused) {
+    silentEl.play().catch(() => {});
+  }
+
+  // 4. 解锁成功后，立刻功成身退，移除全屏监听，绝不影响正常的摇杆操作
+  window.removeEventListener('touchstart', iosAudioUnlock);
+  window.removeEventListener('mousedown', iosAudioUnlock);
+}
+
+// 只要用户一碰屏幕任意地方（不管是点哪里），立刻触发解锁
+window.addEventListener('touchstart', iosAudioUnlock, { passive: false });
+window.addEventListener('mousedown', iosAudioUnlock);
