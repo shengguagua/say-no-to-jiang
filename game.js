@@ -88,32 +88,39 @@ function ensureAudio() {
       bgmGain.gain.value = 0.22;
       bgmGain.connect(masterGain);
       
-      // 播放一个无声的 buffer 瞬间激活
-      const buf = audioCtx.createBuffer(1, 1, 22050);
-      const src = audioCtx.createBufferSource();
-      src.buffer = buf; 
-      src.connect(audioCtx.destination); 
-      src.start(0);
+      // 【核心修改】不要给 iOS 喂空 buffer！给它一个真正的振荡器波形，但把音量调到 0
+      const t = audioCtx.currentTime;
+      const dummyOsc = audioCtx.createOscillator();
+      const dummyGain = audioCtx.createGain();
+      dummyOsc.type = 'sine';
+      dummyOsc.frequency.setValueAtTime(440, t); // 标准 A 音高
+      dummyGain.gain.value = 0.0001; // 极小音量，人耳听不见，但系统能检测到有波形数据
+      dummyOsc.connect(dummyGain);
+      dummyGain.connect(audioCtx.destination);
+      dummyOsc.start(t);
+      dummyOsc.stop(t + 0.1); // 响 0.1 秒后自动销毁
       
       startBGM();
-    } catch (e) { 
-      audioCtx = null; 
-      return; 
-    }
+    } catch (e) { audioCtx = null; return; }
   }
-  
-  // 【核心修改 2】如果被 iOS 挂起了，强行唤醒它
   if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume().catch((err) => console.log("Audio resume failed:", err));
+    audioCtx.resume().catch(() => {});
   }
 }
 
-// WeChat JSBridge ready hook (iOS WeChat sometimes blocks AudioContext until bridge is ready)
+// 把原本的 WeixinJSBridgeReady 监听改成这样：
 function onWxReady() {
-  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+  // 微信就绪时，如果还没有 audioCtx，直接无脑强行创建它！
+  if (!audioCtx) {
+    ensureAudio();
+  } else if (audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => {});
+  }
 }
+
+// 兼容微信的各种加载时机
 if (typeof WeixinJSBridge !== 'undefined') {
-  document.addEventListener('WeixinJSBridgeReady', onWxReady);
+  WeixinJSBridge.invoke('getNetworkType', {}, onWxReady); // 强制唤醒
 } else {
   document.addEventListener('WeixinJSBridgeReady', onWxReady);
 }
